@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SMS analysis</title>
+  <link rel="shortcut icon" href="/img/favicon.ico" />
+  <link rel="stylesheet" href="/css/jqcloud.css">
+  <script type="text/javascript" src="js/jquery-1.12.0.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/2.3.2/js/bootstrap.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+  <script type="text/javascript" src="js/jqcloud.min.js"></script>
+  <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400italic,400,700' rel='stylesheet' type='text/css'>
+  <link href='http://grommet.io/assets/latest/css/grommet.min.css' rel='stylesheet' type='text/css'>
+  <link href='css/grommet.min.css' rel='stylesheet' type='text/css'>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react-dom.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
+  <script src="js/grommet.min.js"></script>
+  <script src="js/colorbox/jquery.colorbox-min.js"></script>
+  <script>
+  var phone = <%- JSON.stringify(phone) %>;
+  </script>
+  <style>
+  body {
+    color: black;
+    background-color: white;
+    overflow:hidden;
+  }
+  .tab__label, .legend__item-label, .legend__item-value, .meter__minmax-min, .meter__minmax-max {
+    color: black;
+  }
+  .tab--active .tab__label {
+    color: #2adcc9;
+  }
+ 
+  .messages {
+    background-color: white;
+    background-color: #425563;
+  }
+  .meter--bar:not(.meter--vertical) .meter__value {
+    display: none;
+  }
+  .meter--bar.meter--vertical .meter__value {
+    display: none;
+  }
+  
+  .messages, #colorbox {
+    border: 2px #1AA982;
+    border-radius: 2px;
+    box-shadow: 0 0 2px #614767;
+  }
+  .left-side {
+  }
+  .footer {
+    border-top: solid 2px #ff8d6d;
+  }
+  #top {
+    color: black;
+    background-color: #01a982;
+    border-bottom: solid 2px #614767;
+  }
+  section:not(.section) {
+     padding-bottom: 0px;
+  }
+  
+  </style>
+</head>
+<body>
+  <script src="/socket.io/socket.io.js"></script>
+  <div id="content"></div>
+  <script type="text/babel">
+  
+  var socket = io();
+  var SMSNotification = React.createClass({
+    getInitialState: function() {
+    
+    return {tiles: [], 
+    positiveScore: 0, 
+    negativeScore: 0, 
+    overallSent: "", 
+    concepts: [], 
+    entities: []};
+   },
+
+    componentDidMount: function () {
+      socket.on('message', this._onMessageReceived);
+      socket.on('score', this._scoreUpdate);
+      socket.on('concepts', this._conceptUpdate);
+      socket.on('entities', this._entityUpdate);
+    },
+    
+    _entityUpdate: function(entity)
+    {
+    this.setState ({entities: entity.ent});
+
+    },
+   _conceptUpdate: function(con){
+     
+     this.setState({concepts: con.concepts});
+     window.processConcepts(con.concepts);
+    
+   },
+    _scoreUpdate: function(score){
+      if (score.sentiment == "positive")
+      {
+      console.log("in positive");
+      var currentScore = this.state.positiveScore;
+      var newScore = currentScore + score.score;
+      newScore = Math.round((newScore + 0.00001) * 100) / 100
+      this.setState({positiveScore: newScore});
+      }
+      else if (score.sentiment == "negative")
+      {
+       var currentNegScore = this.state.negativeScore;
+       var newNegScore = currentNegScore + score.score;
+      newNegScore = Math.round((newNegScore + 0.00001) * 100) / 100
+      console.log("new score is : " + newNegScore);
+      this.setState({negativeScore: newNegScore});
+
+      }
+     if (this.state.positiveScore > Math.abs(this.state.negativeScore))
+     {
+     this.setState({overallSent: "Positive"})
+     }
+     else if (this.state.positiveScore == Math.abs(this.state.negativeScore))
+     {
+     this.setState({overallSent: "Neutral"})
+     }
+     else
+     {
+     this.setState({overallSent: "Negative"})
+     }
+
+    },
+    _onMessageReceived: function(msg) {
+
+    
+
+    var dytile = this.state.tiles;
+    console.log("this is a sentiment check adding dynamic tiles" + msg.sentiment);
+    if (msg.sentiment == "positive")
+    {
+      dytile.push(<Grommet.Tile backgroundColor="green" colorIndex="graph-2"><h4><b>{msg.message}</b></h4><h5>received from: {msg.from}</h5></Grommet.Tile>); 
+    this.setState({tiles: dytile});
+    }
+    else if (msg.sentiment == "negative")
+    {
+      dytile.push(<Grommet.Tile colorIndex="status-critical"><h4><b>{msg.message}</b></h4><h5>received from: {msg.from}</h5></Grommet.Tile>); 
+    this.setState({tiles: dytile});
+    }
+    else
+    {
+      dytile.push(<Grommet.Tile colorIndex="light-2"><h4><b>{msg.message}</b></h4><h5>received from: {msg.from}</h5>
+        </Grommet.Tile>); 
+    this.setState({tiles: dytile});
+    }
+    
+    },
+
+    render: function () {
+      return (
+      
+       <Grommet.Split fixed={true}>
+       <Grommet.Sidebar colorIndex="neutral-3">
+       <Grommet.Header>Received Messages</Grommet.Header>
+      <Grommet.Tiles flush={false} justify="center" colorIndex="neutral-3" full="horizontal">
+      {this.state.tiles}  
+      
+      </Grommet.Tiles>
+      </Grommet.Sidebar>
+
+      <Grommet.Article colorIndex="grey-1">
+      
+    
+    <Grommet.Tiles fill={true} flush={false} justify="center">
+    <Grommet.Tile fill={true}>
+    <Grommet.Title> Number of Texts</Grommet.Title>
+    <Grommet.Meter value={this.state.tiles.length}  type="circle" a11yTitleId="meter-title-5" a11yDescId="meter-desc-5" />
+    </Grommet.Tile>
+    <Grommet.Tile fille={true}>
+    <Grommet.Title>Positive Sentiment</Grommet.Title>
+    <Grommet.Meter value={this.state.positiveScore}  type="circle" a11yTitleId="meter-title-5" a11yDescId="meter-desc-5" />
+    </Grommet.Tile>
+     <Grommet.Tile>
+    <Grommet.Title>Negative Sentiment</Grommet.Title>
+    <Grommet.Meter value={this.state.negativeScore}  type="circle" a11yTitleId="meter-title-5" a11yDescId="meter-desc-5" />
+    </Grommet.Tile>
+    <Grommet.Tile>
+    <Grommet.Header>Concepts</Grommet.Header>
+    <div id="wordy" style={{"width":"440px", "height":"320px"}}>
+    
+    </div>
+    </Grommet.Tile>
+    <Grommet.Tile>
+    <Grommet.Header>Overall Sentiment: {this.state.overallSent}</Grommet.Header>
+    </Grommet.Tile>
+    </Grommet.Tiles>
+
+
+
+  </Grommet.Article>
+
+      </Grommet.Split>
+       
+     
+
+
+      );
+    }
+  });
+
+  var App = React.createClass({
+    render: function() {
+      return (
+        <Grommet.App centered={false} inline={false}>
+        <Grommet.Header justify="between" colorIndex="light-1">
+  <h2>Please SMS your feelings to : {phone}</h2>
+  <img src="/img/hod-black.png" align="right" height="40px"/>
+  </Grommet.Header>
+          <SMSNotification /> 
+        </Grommet.App>
+      );
+    }
+  });
+  var element = document.getElementById('content');
+  console.log(SMSNotification.state);
+  ReactDOM.render(React.createElement(App), element);
+
+ 
+</script>
+
+
+<script>
+var frequencyList = [];
+var buttonCounter = 0;
+function processConcepts(Concepts) {
+ createConceptsFrequencyList(Concepts, function(frequencyList) {
+    console.log(frequencyList);
+   if (buttonCounter > 1) {
+     $('#wordy').jQCloud('update', frequencyList);
+     
+   } else {
+     $('#wordy').jQCloud(frequencyList, {
+       autoResize: true,
+       delay: 50,
+       fontSize: {
+         from: 0.1,
+         to: 0.02
+       },
+       afterCloudRender: function() {
+         $('[data-toggle="popover"]').popover()
+       }
+       // width: width,
+       // height: 200
+       // colors: ["#800026", "#bd0026", "#e31a1c", "#fc4e2a", "#fd8d3c", "#feb24c", "#fed976", "#ffeda0", "#ffffcc"]
+     });
+     buttonCounter = buttonCounter + 1;
+     console.log(buttonCounter);
+   }
+ });
+}
+
+function createConceptsFrequencyList(concepts, callback) {
+  //var frequencyList = [];
+  // console.log(concepts);
+  for (var i=0; i<concepts.length; i++) {
+    var text = concepts[i].concept;
+    console.log(text);
+    var weight = concepts[i].occurrences;
+    var numWords = text.split(' ').length
+    var numCharacters = text.split('').length
+    if (numCharacters > 1) {
+      if (numWords < 4) {
+        frequencyList.push({"text": text, "weight": weight, "html": {"data-toggle": "popover", "data-original-title": text, "data-trigger": "hover", "rel": "popover", "data-content": "occurrences: "+weight}});
+      }
+    }
+  }
+  // console.log(frequencyList)
+  callback(frequencyList);
+}
+
+</script>
+</html>
+
+
+
+
+
+
+

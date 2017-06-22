@@ -1,0 +1,11 @@
+---
+applications:
+- name: sms-sentiments
+  random-route: true
+  memory: 256m
+  path: ../code/
+  env:
+    HODAPIKEY: '<your API KEY>' 
+    PHONE: 'twilio number'
+    
+    

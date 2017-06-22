@@ -1,0 +1,25 @@
+--- 
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata: 
+  name: sms-analyser
+spec: 
+  replicas: 1
+  template: 
+    metadata: 
+      labels: 
+        app: sms-analyser
+    spec: 
+      containers: 
+      - name: sms-analyser
+        env: 
+          - name: PORT
+            value: '8999'
+          - name: HODAPIKEY
+            value: 'haven onDemand API key'
+          - name: PHONE
+            value: '<your twilio phone number>''
+        image: nwrightnz/sms-analyser
+        ports: 
+            - containerPort: 8999
+

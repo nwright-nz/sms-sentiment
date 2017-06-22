@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: sms-analyser
+spec:
+  selector:
+    app: sms-analyser
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8999
